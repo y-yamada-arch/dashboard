@@ -620,7 +620,7 @@ const sb = {
     <div class="op-wrap">
       <div class="op-hd"><div class="op-t">📊 本日の個人実績（スプレッドシート自動連携）</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)" id="op-upd">—</div></div>
       <table class="opt"><thead><tr>
-        <th>#</th><th>オペレーター</th><th>受電数</th><th>架電数</th><th>通話時間(受電)</th><th>AHT</th><th>生産性</th><th>長電話率</th><th>bell依存率</th><th>評価</th>
+        <th>#</th><th>オペレーター</th><th>受電数</th><th>架電数</th><th>通話時間(受電)</th><th>AHT</th><th>生産性</th><th>長電話率</th><th>bell依存率</th><th>メール</th><th>評価</th>
       </tr></thead>
       <tbody id="op-tb"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">読み込み中...</td></tr></tbody></table>
     </div>
@@ -636,17 +636,7 @@ const sb = {
       <div class="kcard kp"><div class="ktrend tdn" id="kt4">—</div><div class="klbl">解約件数（月累計）</div><div class="kval vp" id="kv4">—</div><div class="ksub" id="ks4">—</div></div>
     </div>
   </div>
-<!-- 障害・不具合 -->
-  <div class="sec" id="sec-inc">
-    <div class="sec-lbl">⚠️ 障害・不具合情報</div>
-    <div class="inc-c">
-      <div class="inc-h">
-        <div class="inc-t"><span class="blink-r"></span>アクティブ障害 / 不具合</div>
-        <span style="font-size:10px;color:var(--text-muted)" id="inc-cnt">現在 0件</span>
-      </div>
-      <div class="incl" id="inc-l"><div class="empty">障害・不具合の報告はありません</div></div>
-    </div>
-  </div>
+
   <!-- ステータス -->
   <div class="sec">
     <div class="sec-lbl">📋 対応状況サマリー</div>
@@ -1097,6 +1087,7 @@ async function renderAttInline(){
           <td><span style="font-family:var(--font-display);font-size:13px;font-weight:700;color:${prodColor}">${r.productivity??'—'}</span></td>
           <td style="font-size:11px;color:var(--text-secondary)">${r.long_call??'—'}</td>
           <td style="font-size:11px;color:var(--text-secondary)">${r.bell_rate??'—'}</td>
+          <td><span class="onum" style="color:var(--blue);font-size:13px">${r.mail??'—'}</span></td>
           <td>${badge}</td>
         </tr>`;
       });
