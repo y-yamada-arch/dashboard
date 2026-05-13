@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>社内掲示板 ダッシュボード</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-base:#0D1117;--bg-surface:#161B22;--bg-elevated:#1C2128;--bg-card:#21262D;
+  --border:#30363D;--border-bright:#484F58;
+  --orange:#FF6B2B;--orange-dim:#C44A18;--orange-glow:rgba(255,107,43,0.15);
+  --blue:#2F81F7;--blue-dim:#1A56B0;--blue-glow:rgba(47,129,247,0.15);
+  --teal:#1ABC9C;--purple:#8B5CF6;--red:#F85149;--yellow:#D29922;--green:#3FB950;
+  --text-primary:#E6EDF3;--text-secondary:#8B949E;--text-muted:#484F58;
+  --font-display:'Orbitron',monospace;--font-body:'Noto Sans JP',sans-serif;--font-mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg-base);color:var(--text-primary);font-family:var(--font-body);min-height:100vh;overflow-x:hidden;padding-bottom:80px}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999}
+
+/* HEADER */
+header{background:var(--bg-surface);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.logo-mark{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--orange);letter-spacing:2px;border:1px solid var(--orange-dim);padding:4px 10px;border-radius:3px;background:var(--orange-glow)}
+.logo-text{font-size:14px;font-weight:500}
+.logo-sep{width:1px;height:20px;background:var(--border-bright)}
+.h-left,.h-right{display:flex;align-items:center;gap:12px}
+.live-badge{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--green);background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);padding:3px 10px;border-radius:2px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulseG 1.5s infinite}
+@keyframes pulseG{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+#clock{font-family:var(--font-display);font-size:13px;color:var(--text-secondary);letter-spacing:1px}
+.sync-badge{font-family:var(--font-mono);font-size:10px;padding:3px 8px;border-radius:2px;border:1px solid var(--border)}
+.sync-ok{color:var(--green);background:rgba(63,185,80,.08);border-color:rgba(63,185,80,.3)}
+.sync-err{color:var(--red);background:rgba(248,81,73,.08);border-color:rgba(248,81,73,.3)}
+.role-sw{display:flex;gap:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:3px}
+.role-btn{font-size:10px;padding:3px 8px;border-radius:2px;border:none;cursor:pointer;background:transparent;color:var(--text-secondary);font-family:var(--font-body);transition:all .2s}
+.role-btn.active{background:var(--bg-elevated);color:var(--text-primary)}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--orange-dim);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.rbadge{font-size:11px;padding:3px 10px;border-radius:2px;font-weight:500}
+.rp{background:rgba(139,92,246,.15);color:var(--purple);border:1px solid rgba(139,92,246,.4)}
+.ra{background:rgba(255,107,43,.15);color:var(--orange);border:1px solid var(--orange-dim)}
+.rs{background:rgba(47,129,247,.15);color:var(--blue);border:1px solid var(--blue-dim)}
+
+/* MAIN */
+main{max-width:1400px;margin:0 auto;padding:20px 24px;display:flex;flex-direction:column;gap:20px}
+.sec-lbl{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+.sec{display:flex;flex-direction:column;animation:fIn .4s ease backwards}
+@keyframes fIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+/* LOAD */
+.load-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px}
+.spinner{width:40px;height:40px;border:2px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-text{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);letter-spacing:2px}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+.ov.open{display:flex}
+.modal{background:var(--bg-surface);border:1px solid var(--border-bright);border-radius:8px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;animation:slideUp .25s ease}
+.att-modal{max-width:600px}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.mhead{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.mtitle{font-size:14px;font-weight:500}
+.mclose{background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:2px 6px;border-radius:3px}
+.mclose:hover{color:var(--text-primary)}
+.mbody{padding:20px}
+.fg{margin-bottom:14px}
+.flbl{display:block;font-size:11px;color:var(--text-secondary);margin-bottom:5px;letter-spacing:.5px}
+input.fi,select.fi,textarea.fi{width:100%;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);padding:8px 12px;font-size:13px;font-family:var(--font-body);outline:none;transition:border-color .2s}
+input.fi:focus,select.fi:focus,textarea.fi:focus{border-color:var(--orange)}
+select.fi option{background:var(--bg-card)}
+textarea.fi{resize:vertical;min-height:80px;line-height:1.5}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn-ok{width:100%;padding:10px;background:var(--orange);border:none;border-radius:4px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-body);transition:opacity .2s;margin-top:4px}
+.btn-ok:hover{opacity:.85}
+.btn-ok.blue{background:var(--blue)}
+.btn-ok.green{background:var(--green)}
+.btn-no{width:100%;padding:9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-body);margin-top:8px;transition:all .2s}
+.btn-no:hover{border-color:var(--border-bright);color:var(--text-primary)}
+.mtabs{display:flex;border-bottom:1px solid var(--border);margin:-20px -20px 20px}
+.mtab{padding:10px 14px;font-size:12px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-family:var(--font-body);border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.mtab.active{color:var(--orange);border-bottom-color:var(--orange)}
+
+/* ALERT */
+.alert-strip{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.3);border-left:3px solid var(--red);border-radius:4px;padding:10px 16px;display:flex;align-items:center;gap:12px}
+.alert-text{font-size:13px;flex:1}
+.alert-time{font-family:var(--font-mono);font-size:11px;color:var(--text-muted)}
+
+/* METRICS */
+.mg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.mg{background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.mg-head{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:500;color:var(--text-secondary)}
+.mg-phone .mg-head{background:rgba(255,107,43,.05)}.mg-mail .mg-head{background:rgba(47,129,247,.05)}.mg-lstep .mg-head{background:rgba(26,188,156,.05)}
+.mg-body{padding:12px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mi{display:flex;flex-direction:column;gap:4px}
+.mlbl{font-size:10px;color:var(--text-muted);letter-spacing:.5px}
+.mval{font-family:var(--font-display);font-size:22px;font-weight:700;line-height:1}
+.edit-btn{font-size:10px;padding:2px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:2px;color:var(--text-muted);cursor:pointer;font-family:var(--font-body);transition:all .2s}
+.edit-btn:hover{border-color:var(--border-bright);color:var(--text-primary)}
+.vo{color:var(--orange)}.vb{color:var(--blue)}.vt{color:var(--teal)}.vg{color:var(--green)}.vr{color:var(--red)}.vy{color:var(--yellow)}.vp{color:var(--purple)}
+
+/* CLAIMS */
+.claim-panel{background:rgba(248,81,73,.05);border:1px solid rgba(248,81,73,.2);border-radius:6px;overflow:hidden}
+.claim-head{padding:10px 16px;border-bottom:1px solid rgba(248,81,73,.15);display:flex;align-items:center;justify-content:space-between;background:rgba(248,81,73,.04)}
+.claim-title{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--red)}
+.claim-cnt{font-family:var(--font-display);font-size:11px;background:rgba(248,81,73,.15);color:var(--red);padding:2px 8px;border-radius:2px}
+.clist{padding:8px 0}
+.ci{padding:8px 16px;display:grid;grid-template-columns:76px 1fr 68px 72px 28px;gap:8px;align-items:center;font-size:12px;border-bottom:1px solid rgba(248,81,73,.07)}
+.ci:hover{background:rgba(248,81,73,.04)}
+.ci:last-child{border-bottom:none}
+.ctag{font-size:10px;padding:2px 6px;border-radius:2px;font-weight:500;white-space:nowrap}
+.tcrit{background:rgba(248,81,73,.15);color:var(--red);border:1px solid rgba(248,81,73,.3)}
+.tmid{background:rgba(210,153,34,.15);color:var(--yellow);border:1px solid rgba(210,153,34,.3)}
+.tlow{background:rgba(63,185,80,.12);color:var(--green);border:1px solid rgba(63,185,80,.25)}
+.cop{color:var(--text-secondary);font-size:11px}
+.ctime{color:var(--text-muted);font-family:var(--font-mono);font-size:10px}
+.del-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:2px}
+.del-btn:hover{color:var(--red)}
+.empty{padding:20px;text-align:center;color:var(--text-muted);font-size:12px}
+
+/* SECONDARY */
+.sg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.scard{background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:flex;align-items:center;gap:14px}
+.sicon{width:40px;height:40px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sp{background:rgba(255,107,43,.1)}.sc{background:rgba(47,129,247,.1)}.ss{background:rgba(26,188,156,.1)}
+.si2{flex:1}.slbl{font-size:11px;color:var(--text-muted);margin-bottom:4px}.sval{font-family:var(--font-display);font-size:20px;font-weight:700}
+
+/* ATTENDANCE */
+.att-panel{background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.att-panel-head{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:500;color:var(--text-secondary)}
+.att-panel-body{padding:14px 16px}
+.att-stamp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.stamp-card{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;cursor:pointer;transition:all .2s;position:relative}
+.stamp-card:hover{border-color:var(--border-bright)}
+.stamp-card.s-in{border-color:var(--green);background:rgba(63,185,80,.07)}
+.stamp-card.s-out{border-color:var(--text-muted);opacity:.6}
+.stamp-name{font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stamp-info{font-size:9px;color:var(--text-muted);margin-top:2px;font-family:var(--font-mono)}
+.stamp-dot{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green)}
+.att-stats{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.att-fig{display:flex;align-items:baseline;gap:6px}
+.att-big{font-family:var(--font-display);font-size:28px;font-weight:900}
+.att-unit{font-size:12px;color:var(--text-secondary)}
+.att-div{width:1px;height:32px;background:var(--border)}
+.ptrack{height:6px;background:var(--bg-card);border-radius:3px;overflow:hidden;flex:1;min-width:100px;max-width:180px}
+.pfill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--blue),var(--teal));transition:width 1s}
+
+/* ANNOUNCES */
+.ann-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.ann-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.ann-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.ann-cat{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500}
+.ann-new{font-size:9px;background:var(--red);color:#fff;padding:1px 5px;border-radius:2px;font-weight:700}
+.ann-body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.ann-item{padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:3px;position:relative}
+.ann-item:last-child{border-bottom:none;padding-bottom:0}
+.ann-txt{font-size:12px;color:var(--text-primary);line-height:1.5;padding-right:20px}
+.ann-meta{display:flex;align-items:center;gap:8px}
+.ann-from{font-size:10px;color:var(--text-secondary)}
+.ann-date{font-size:10px;color:var(--text-muted);font-family:var(--font-mono)}
+.ann-del{position:absolute;top:0;right:0;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 4px}
+.ann-del:hover{color:var(--red)}
+
+/* OPERATOR */
+.op-wrap{background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.op-hd{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.op-t{font-size:12px;font-weight:500;color:var(--text-secondary)}
+table.opt{width:100%;border-collapse:collapse}
+.opt th{font-size:10px;color:var(--text-muted);text-align:left;padding:8px 14px;border-bottom:1px solid var(--border);font-weight:400;background:var(--bg-card)}
+.opt td{padding:10px 14px;font-size:12px;border-bottom:1px solid rgba(48,54,61,.5);vertical-align:middle}
+.opt tr:last-child td{border-bottom:none}
+.opt tr:hover td{background:rgba(255,255,255,.02)}
+.oname{display:flex;align-items:center;gap:8px}
+.oav{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0}
+.onum{font-family:var(--font-display);font-size:13px;font-weight:700}
+.obar{display:flex;align-items:center;gap:8px;min-width:90px}
+.otrack{flex:1;height:4px;background:var(--bg-card);border-radius:2px;overflow:hidden}
+.ofill{height:100%;border-radius:2px}
+.badge{font-size:9px;padding:2px 6px;border-radius:2px;font-weight:700;letter-spacing:.5px}
+.bgold{background:rgba(210,153,34,.2);color:var(--yellow);border:1px solid rgba(210,153,34,.4)}
+.bsilv{background:rgba(139,148,158,.2);color:#8B949E;border:1px solid rgba(139,148,158,.4)}
+.bbrnz{background:rgba(196,74,24,.2);color:#C4896A;border:1px solid rgba(196,74,24,.4)}
+.bnew{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3)}
+.bwarn{background:rgba(248,81,73,.12);color:var(--red);border:1px solid rgba(248,81,73,.25)}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kcard{background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;padding:14px 16px;position:relative;overflow:hidden}
+.kcard::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.ko::after{background:var(--orange)}.kb::after{background:var(--blue)}.kt::after{background:var(--teal)}.kp::after{background:var(--purple)}
+.klbl{font-size:10px;color:var(--text-muted);margin-bottom:8px}
+.kval{font-family:var(--font-display);font-size:28px;font-weight:900;line-height:1;margin-bottom:6px}
+.ksub{font-size:10px;color:var(--text-secondary)}
+.ktrend{position:absolute;top:12px;right:12px;font-size:10px;padding:2px 6px;border-radius:2px}
+.tup{background:rgba(63,185,80,.1);color:var(--green)}.tdn{background:rgba(248,81,73,.1);color:var(--red)}
+
+/* SHOP */
+.shop-c{background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;padding:14px 16px}
+.shop-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.shop-t{font-size:12px;font-weight:500;color:var(--text-secondary)}
+.shop-l{display:flex;flex-direction:column;gap:8px}
+.shi{display:grid;grid-template-columns:1fr 60px 80px 70px;gap:10px;align-items:center;font-size:12px;padding:6px 10px;background:var(--bg-card);border-radius:4px;border:1px solid var(--border)}
+.shn{font-weight:500}
+.shp{font-size:10px;padding:2px 6px;border-radius:2px;text-align:center}
+.pa{background:rgba(255,107,43,.12);color:var(--orange)}.pb{background:rgba(47,129,247,.12);color:var(--blue)}.pc{background:rgba(26,188,156,.12);color:var(--teal)}
+.shs{display:flex;align-items:center;gap:4px}
+.shdot{width:5px;height:5px;border-radius:50%}
+.shact{background:var(--green)}.shwrn{background:var(--yellow)}
+.shtxt{font-size:10px;color:var(--text-secondary)}
+
+/* INCIDENT */
+.inc-c{background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.inc-h{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.inc-t{font-size:12px;font-weight:500;color:var(--text-secondary);display:flex;align-items:center;gap:6px}
+.blink-r{width:6px;height:6px;border-radius:50%;background:var(--red);animation:bl 1s infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.2}}
+.incl{padding:8px 0}
+.incr{padding:8px 14px;display:grid;grid-template-columns:76px 1fr 80px 72px 28px;gap:8px;align-items:center;font-size:12px;border-bottom:1px solid rgba(48,54,61,.5)}
+.incr:last-child{border-bottom:none}
+.sev{font-size:10px;padding:2px 7px;border-radius:2px;font-weight:600}
+.sh{background:rgba(248,81,73,.15);color:var(--red)}.sm{background:rgba(210,153,34,.15);color:var(--yellow)}.sl{background:rgba(63,185,80,.12);color:var(--green)}
+
+/* STATUS */
+.stat-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.sbtn{border:1px solid var(--border);border-radius:6px;padding:16px;display:flex;align-items:center;gap:14px;background:var(--bg-surface)}
+.sbtn-ic{width:44px;height:44px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.ic-r{background:rgba(248,81,73,.1)}.ic-y{background:rgba(210,153,34,.1)}.ic-g{background:rgba(63,185,80,.1)}
+.sbtn-lbl{font-size:11px;color:var(--text-muted);margin-bottom:4px}
+.sbtn-cnt{font-family:var(--font-display);font-size:28px;font-weight:900;line-height:1}
+.cr{color:var(--red)}.cy{color:var(--yellow)}.cg{color:var(--green)}
+
+/* MENU */
+.menu-g{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.mbtn{background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:all .2s;text-decoration:none}
+.mbtn:hover{border-color:var(--border-bright);background:var(--bg-elevated);transform:translateY(-1px)}
+.mi-ic{font-size:20px}.mi-lbl{font-size:11px;color:var(--text-primary);font-weight:500;line-height:1.3}.mi-sub{font-size:10px;color:var(--text-muted)}
+
+/* ATTENDANCE MODAL */
+.staff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;cursor:pointer;transition:all .2s;text-align:center;position:relative;user-select:none}
+.staff-card:hover{border-color:var(--border-bright)}
+.staff-card.selected{border-color:var(--orange);background:var(--orange-glow);box-shadow:0 0 0 1px var(--orange)}
+.staff-card.punched-in{border-color:var(--green);background:rgba(63,185,80,.07)}
+.staff-card.punched-out{border-color:var(--text-muted);opacity:.55}
+.sc-name{font-size:12px;font-weight:500;margin-bottom:3px}
+.sc-status{font-size:10px;color:var(--text-muted)}
+.sc-time{font-size:10px;font-family:var(--font-mono)}
+.sc-badge{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green)}
+.pin-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;padding:4px 0}
+.pin-who{font-size:14px;font-weight:500;text-align:center}
+.pin-who span{color:var(--orange)}
+.pin-display{display:flex;gap:10px;margin:2px 0}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border-bright);transition:all .15s}
+.pin-dot.filled{background:var(--orange);border-color:var(--orange)}
+.pin-dot.error{background:var(--red);border-color:var(--red);animation:shake .3s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:220px}
+.pin-key{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;height:52px;font-size:18px;font-weight:500;color:var(--text-primary);cursor:pointer;font-family:var(--font-display);transition:all .15s;display:flex;align-items:center;justify-content:center;user-select:none}
+.pin-key:hover{background:var(--bg-elevated);border-color:var(--border-bright)}
+.pin-key:active{transform:scale(.93)}
+.pin-key.del-k{font-size:14px;color:var(--text-secondary)}
+.pin-key.enter-k{background:var(--orange-glow);border-color:var(--orange-dim);color:var(--orange)}
+.pin-err{font-size:11px;color:var(--red);height:14px;font-family:var(--font-mono);text-align:center}
+.pin-action-btns{display:flex;gap:10px;width:100%}
+.btn-in{flex:1;padding:11px;background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.4);border-radius:4px;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-body);transition:all .2s}
+.btn-in:hover{background:rgba(63,185,80,.22)}
+.btn-out{flex:1;padding:11px;background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.35);border-radius:4px;color:var(--red);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-body);transition:all .2s}
+.btn-out:hover{background:rgba(248,81,73,.2)}
+.att-log{margin-top:14px;max-height:160px;overflow-y:auto}
+.att-log-hd{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-bottom:8px;letter-spacing:1px}
+.att-row{display:grid;grid-template-columns:1fr 58px 58px 58px;gap:8px;align-items:center;font-size:11px;padding:5px 10px;background:var(--bg-card);border-radius:3px;margin-bottom:4px;border:1px solid var(--border)}
+.att-in-t{color:var(--green);font-family:var(--font-mono)}
+.att-out-t{color:var(--red);font-family:var(--font-mono)}
+.att-dur{color:var(--text-secondary);font-family:var(--font-mono)}
+.att-sdot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px}
+.admin-att-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-top:14px;overflow:hidden}
+.aap-head{padding:8px 14px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);display:flex;align-items:center;justify-content:space-between}
+.aap-body{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.pin-staff-row{display:grid;grid-template-columns:1fr 90px 70px;gap:8px;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid rgba(48,54,61,.5)}
+.pin-staff-row:last-child{border-bottom:none}
+.pin-input{width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:3px;color:var(--text-primary);padding:4px 8px;font-size:12px;font-family:var(--font-mono);text-align:center;outline:none}
+.pin-input:focus{border-color:var(--orange)}
+.pin-save-btn{font-size:10px;padding:4px 8px;background:var(--orange-glow);border:1px solid var(--orange-dim);border-radius:3px;color:var(--orange);cursor:pointer;font-family:var(--font-body)}
+.csv-section{display:flex;flex-direction:column;gap:8px}
+.csv-range{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--text-secondary);flex-wrap:wrap}
+.csv-range input.fi{width:140px;padding:5px 8px;font-size:12px}
+.csv-btn{display:flex;align-items:center;gap:6px;padding:9px 14px;background:rgba(47,129,247,.1);border:1px solid var(--blue-dim);border-radius:4px;color:var(--blue);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font-body);transition:all .2s;justify-content:center}
+.csv-btn:hover{background:rgba(47,129,247,.18)}
+
+/* FOOTER */
+.fbar{position:fixed;bottom:0;left:0;right:0;height:60px;background:var(--bg-surface);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:10px;z-index:100;padding:0 24px}
+.fbtn{display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:12px;font-family:var(--font-body);cursor:pointer;transition:all .2s}
+.fbtn:hover{border-color:var(--border-bright);color:var(--text-primary)}
+.fbtn.fo{border-color:var(--orange-dim);color:var(--orange);background:var(--orange-glow)}
+.fbtn.fb{border-color:var(--blue-dim);color:var(--blue);background:var(--blue-glow)}
+.fbtn.fg2{border-color:rgba(63,185,80,.4);color:var(--green);background:rgba(63,185,80,.08)}
+
+/* TOAST */
+.tc{position:fixed;top:72px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.tst{background:var(--bg-elevated);border:1px solid var(--border-bright);border-radius:6px;padding:10px 16px;font-size:12px;color:var(--text-primary);animation:tIn .3s ease;min-width:180px}
+.tst.ok{border-left:3px solid var(--green)}.tst.er{border-left:3px solid var(--red)}
+@keyframes tIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes tOut{to{opacity:0;transform:translateX(16px)}}
+
+@media(max-width:768px){
+  header{padding:0 12px}main{padding:12px;gap:14px}
+  .mg-grid,.sg,.ann-grid,.kpi-grid,.stat-btns,.menu-g{grid-template-columns:1fr}
+  .logo-text,.logo-sep{display:none}
+  .att-stamp-grid{grid-template-columns:repeat(3,1fr)}
+  .ci{grid-template-columns:72px 1fr 26px}.ci .cop,.ci .ctime{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== SUPABASE CONFIG ===== -->
+<script>
+const SUPABASE_URL = 'https://fzsujdykvzbmxfetjmrt.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6c3VqZHlrdnpibXhmZXRqbXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NDM3OTksImV4cCI6MjA5NDIxOTc5OX0.qKoE4LTBpKtQPJ7-DdHKtq4RGETF28F-g46HK6kLbKc';
+
+// Supabase REST API helper
+async function sbFetch(path, options={}){
+  const url = `${SUPABASE_URL}/rest/v1/${path}`;
+  const res = await fetch(url, {
+    ...options,
+    headers:{
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': options.prefer || 'return=representation',
+      ...(options.headers||{})
+    }
+  });
+  if(!res.ok){
+    const err = await res.text();
+    throw new Error(`Supabase error: ${res.status} ${err}`);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
+}
+
+const sb = {
+  from: (table) => ({
+    select: (cols='*', params='') => sbFetch(`${table}?select=${cols}&${params}`),
+    insert: (data) => sbFetch(table, {method:'POST', body:JSON.stringify(data)}),
+    update: (data, params) => sbFetch(`${table}?${params}`, {method:'PATCH', body:JSON.stringify(data), prefer:'return=representation'}),
+    delete: (params) => sbFetch(`${table}?${params}`, {method:'DELETE', prefer:'return=minimal'}),
+    upsert: (data, opts='') => sbFetch(`${table}${opts?'?'+opts:''}`, {method:'POST', body:JSON.stringify(data), prefer:'resolution=merge-duplicates,return=representation'}),
+  })
+};
+</script>
+
+<div class="tc" id="tc"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="h-left">
+    <div class="logo-mark">INTL</div>
+    <div class="logo-sep"></div>
+    <div class="logo-text">社内掲示板 / ダッシュボード</div>
+  </div>
+  <div class="h-right">
+    <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+    <div id="clock">--:--:--</div>
+    <span class="sync-badge sync-ok" id="sync-badge">⬤ Supabase接続中</span>
+    <div class="role-sw">
+      <button class="role-btn active" id="btn-president" onclick="switchRole('president')">社長</button>
+      <button class="role-btn" id="btn-admin" onclick="switchRole('admin')">管理者</button>
+      <button class="role-btn" id="btn-staff" onclick="switchRole('staff')">一般</button>
+    </div>
+    <div class="h-left" style="gap:8px">
+      <div class="avatar" id="uav">代</div>
+      <span id="rbadge" class="rbadge rp">PRESIDENT</span>
+    </div>
+  </div>
+</header>
+
+<!-- MODALS -->
+
+<!-- クレーム -->
+<div class="ov" id="ov-claim">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">🔥 クレーム登録</div><button class="mclose" onclick="cm('ov-claim')">×</button></div>
+    <div class="mbody">
+      <div class="fg"><label class="flbl">重要度</label><select class="fi" id="cl-lv"><option value="critical">最重要（赤）</option><option value="mid">重要（黄）</option><option value="low">低（緑）</option></select></div>
+      <div class="fg"><label class="flbl">クレーム内容</label><textarea class="fi" id="cl-ct" placeholder="内容を入力"></textarea></div>
+      <div class="frow">
+        <div class="fg" style="margin:0"><label class="flbl">担当オペレーター</label><input class="fi" id="cl-op" type="text" placeholder="例：田中 美咲"></div>
+        <div class="fg" style="margin:0"><label class="flbl">対応者</label><input class="fi" id="cl-hd" type="text" placeholder="例：管理者 佐藤"></div>
+      </div>
+      <div style="height:14px"></div>
+      <button class="btn-ok" onclick="submitClaim()">登録する</button>
+      <button class="btn-no" onclick="cm('ov-claim')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- 重要連絡 -->
+<div class="ov" id="ov-ann">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">📌 重要連絡を投稿</div><button class="mclose" onclick="cm('ov-ann')">×</button></div>
+    <div class="mbody">
+      <div class="mtabs">
+        <button class="mtab active" data-tab="important" onclick="swTab(this)">重要連絡</button>
+        <button class="mtab" data-tab="emergency" onclick="swTab(this)">緊急連絡</button>
+        <button class="mtab" data-tab="ops" onclick="swTab(this)">運用変更</button>
+        <button class="mtab" data-tab="president" onclick="swTab(this)">社長共有</button>
+      </div>
+      <div class="fg"><label class="flbl">投稿内容</label><textarea class="fi" id="an-ct" placeholder="連絡内容を入力" style="min-height:100px"></textarea></div>
+      <div class="frow">
+        <div class="fg" style="margin:0"><label class="flbl">投稿者名</label><input class="fi" id="an-fr" type="text" placeholder="例：品質管理"></div>
+        <div class="fg" style="margin:0"><label class="flbl">緊急フラグ</label><select class="fi" id="an-ug"><option value="0">通常</option><option value="1">NEW表示</option></select></div>
+      </div>
+      <div style="height:14px"></div>
+      <button class="btn-ok blue" onclick="submitAnn()">投稿する</button>
+      <button class="btn-no" onclick="cm('ov-ann')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- 業務数値更新 -->
+<div class="ov" id="ov-metrics">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">📊 業務数値 一括更新</div><button class="mclose" onclick="cm('ov-metrics')">×</button></div>
+    <div class="mbody">
+      <div class="frow"><div class="fg"><label class="flbl">📞 総入電数</label><input class="fi" id="e-ib" type="number" min="0"></div><div class="fg"><label class="flbl">📞 総架電数</label><input class="fi" id="e-ob" type="number" min="0"></div></div>
+      <div class="frow"><div class="fg"><label class="flbl">📧 メール受信</label><input class="fi" id="e-mr" type="number" min="0"></div><div class="fg"><label class="flbl">📧 メール送信</label><input class="fi" id="e-ms" type="number" min="0"></div></div>
+      <div class="frow"><div class="fg"><label class="flbl">💬 Lステップ送信</label><input class="fi" id="e-ls" type="number" min="0"></div><div class="fg"><label class="flbl">💬 Lステップ受信</label><input class="fi" id="e-lr" type="number" min="0"></div></div>
+      <div class="frow"><div class="fg"><label class="flbl">💰 入金処理数</label><input class="fi" id="e-pay" type="number" min="0"></div><div class="fg"><label class="flbl">🔌 開通作業数</label><input class="fi" id="e-con" type="number" min="0"></div></div>
+      <div class="frow"><div class="fg"><label class="flbl">📦 発送業務数</label><input class="fi" id="e-shp" type="number" min="0"></div><div class="fg"><label class="flbl">🔴 未対応件数</label><input class="fi" id="e-pnd" type="number" min="0"></div></div>
+      <div class="frow"><div class="fg"><label class="flbl">🟡 保留案件</label><input class="fi" id="e-hld" type="number" min="0"></div><div class="fg"><label class="flbl">🟢 完了件数</label><input class="fi" id="e-dn" type="number" min="0"></div></div>
+      <button class="btn-ok" onclick="updateMetrics()">Supabaseに保存する</button>
+      <button class="btn-no" onclick="cm('ov-metrics')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- 障害報告 -->
+<div class="ov" id="ov-inc">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">⚠️ 障害・不具合 報告</div><button class="mclose" onclick="cm('ov-inc')">×</button></div>
+    <div class="mbody">
+      <div class="fg"><label class="flbl">重大度</label><select class="fi" id="i-sv"><option value="HIGH">HIGH（高）</option><option value="MID">MID（中）</option><option value="LOW">LOW（低）</option></select></div>
+      <div class="fg"><label class="flbl">障害内容</label><textarea class="fi" id="i-ct" placeholder="障害・不具合の内容を記入"></textarea></div>
+      <div class="frow"><div class="fg" style="margin:0"><label class="flbl">発生時刻</label><input class="fi" id="i-tm" type="text" placeholder="例：10:30〜"></div><div class="fg" style="margin:0"><label class="flbl">ステータス</label><select class="fi" id="i-st"><option value="対応中">対応中</option><option value="調査中">調査中</option><option value="確認待">確認待</option><option value="解決済">解決済</option></select></div></div>
+      <div style="height:14px"></div>
+      <button class="btn-ok" onclick="submitInc()">報告する</button>
+      <button class="btn-no" onclick="cm('ov-inc')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- 出勤退勤 -->
+<div class="ov" id="ov-att">
+  <div class="modal att-modal">
+    <div class="mhead"><div class="mtitle">🕐 出勤 / 退勤 打刻</div><button class="mclose" onclick="closeAttModal()">×</button></div>
+    <div class="mbody">
+      <!-- STEP1 -->
+      <div id="att-step1">
+        <div class="flbl" style="margin-bottom:8px">スタッフを選択してください</div>
+        <div class="staff-grid" id="att-staff-grid"></div>
+        <div class="att-log">
+          <div class="att-log-hd">本日の打刻履歴</div>
+          <div id="att-log-body"></div>
+        </div>
+        <div class="admin-att-panel ao">
+          <div class="aap-head"><span>⚙️ 管理者メニュー</span><button class="pin-save-btn" onclick="toggleAdminBody()">▼ 開く</button></div>
+          <div class="aap-body" id="admin-att-body" style="display:none">
+            <div class="csv-section">
+              <div class="flbl">📥 勤怠CSVエクスポート</div>
+              <div class="csv-range"><span>期間：</span><input class="fi" type="date" id="csv-from"><span>〜</span><input class="fi" type="date" id="csv-to"></div>
+              <button class="csv-btn" onclick="exportCSV()">📊 CSVダウンロード</button>
+            </div>
+            <div style="border-top:1px solid var(--border);padding-top:10px">
+              <div class="flbl" style="margin-bottom:8px">🔐 PINコード管理（4桁）</div>
+              <div id="pin-mgmt-list"></div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:6px">※ 未設定のスタッフはPINなしで打刻可能</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- STEP2 PIN -->
+      <div id="att-step2" style="display:none">
+        <div class="pin-wrap">
+          <div class="pin-who">本人確認 — <span id="pin-target-name">—</span></div>
+          <div class="pin-display" id="pin-display">
+            <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+          </div>
+          <div class="pin-err" id="pin-err"></div>
+          <div class="pin-pad">
+            <button class="pin-key" onclick="pinKey('1')">1</button><button class="pin-key" onclick="pinKey('2')">2</button><button class="pin-key" onclick="pinKey('3')">3</button>
+            <button class="pin-key" onclick="pinKey('4')">4</button><button class="pin-key" onclick="pinKey('5')">5</button><button class="pin-key" onclick="pinKey('6')">6</button>
+            <button class="pin-key" onclick="pinKey('7')">7</button><button class="pin-key" onclick="pinKey('8')">8</button><button class="pin-key" onclick="pinKey('9')">9</button>
+            <button class="pin-key del-k" onclick="pinDel()">←</button><button class="pin-key" onclick="pinKey('0')">0</button><button class="pin-key enter-k" onclick="pinEnter()">OK</button>
+          </div>
+          <button class="btn-no" style="width:180px;margin-top:0" onclick="backToStep1()">← 戻る</button>
+        </div>
+      </div>
+      <!-- STEP3 出勤/退勤 -->
+      <div id="att-step3" style="display:none">
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-size:14px;font-weight:500;margin-bottom:4px">✅ 認証完了 — <span id="punch-target-name" style="color:var(--green)">—</span></div>
+          <div style="font-size:11px;color:var(--text-muted)" id="punch-current-status">—</div>
+        </div>
+        <div class="pin-action-btns">
+          <button class="btn-in" onclick="punch('in')">🟢 出勤する</button>
+          <button class="btn-out" onclick="punch('out')">🔴 退勤する</button>
+        </div>
+        <button class="btn-no" style="margin-top:10px" onclick="backToStep1()">← 戻る</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<main id="loading-main">
+  <div class="load-screen"><div class="spinner"></div><div class="load-text">Supabaseに接続中...</div></div>
+</main>
+
+<!-- MAIN -->
+<main id="main" style="display:none">
+
+  <div id="emg-strip" style="display:none">
+    <div class="alert-strip">
+      <span style="font-size:18px;flex-shrink:0">🚨</span>
+      <div class="alert-text"><strong>緊急クレーム：</strong><span id="emg-txt"></span></div>
+      <span class="alert-time" id="emg-tm"></span>
+    </div>
+  </div>
+
+  <!-- 業務数値 -->
+  <div class="sec">
+    <div class="sec-lbl">📊 本日の業務状況 — <span id="today" style="color:var(--text-secondary)"></span></div>
+    <div class="mg-grid">
+      <div class="mg mg-phone">
+        <div class="mg-head"><span>📞 電話対応</span><button class="edit-btn ao" onclick="openMetrics()">数値更新</button></div>
+        <div class="mg-body">
+          <div class="mi"><span class="mlbl">総入電数</span><span class="mval vo" id="v-ib">—</span></div>
+          <div class="mi"><span class="mlbl">総架電数</span><span class="mval vo" id="v-ob">—</span></div>
+        </div>
+      </div>
+      <div class="mg mg-mail">
+        <div class="mg-head"><span>📧 メール対応</span><button class="edit-btn ao" onclick="openMetrics()">数値更新</button></div>
+        <div class="mg-body">
+          <div class="mi"><span class="mlbl">総受信数</span><span class="mval vb" id="v-mr">—</span></div>
+          <div class="mi"><span class="mlbl">総送信数</span><span class="mval vb" id="v-ms">—</span></div>
+        </div>
+      </div>
+      <div class="mg mg-lstep">
+        <div class="mg-head"><span>💬 Lステップ対応</span><button class="edit-btn ao" onclick="openMetrics()">数値更新</button></div>
+        <div class="mg-body">
+          <div class="mi"><span class="mlbl">総送信数</span><span class="mval vt" id="v-ls">—</span></div>
+          <div class="mi"><span class="mlbl">総受信数</span><span class="mval vt" id="v-lr">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- クレーム -->
+  <div class="sec">
+    <div class="claim-panel">
+      <div class="claim-head"><div class="claim-title">🔥 クレーム共有</div><div class="claim-cnt" id="cl-cnt">0件</div></div>
+      <div class="clist" id="cl-list"><div class="empty">クレームはありません</div></div>
+    </div>
+  </div>
+
+  <!-- 入金・開通・発送 -->
+  <div class="sec">
+    <div class="sg">
+      <div class="scard"><div class="sicon sp">💰</div><div class="si2"><div class="slbl">入金処理数</div><div class="sval vo" id="v-pay">—</div></div></div>
+      <div class="scard"><div class="sicon sc">🔌</div><div class="si2"><div class="slbl">開通作業数</div><div class="sval vb" id="v-con">—</div></div></div>
+      <div class="scard"><div class="sicon ss">📦</div><div class="si2"><div class="slbl">発送業務数</div><div class="sval vt" id="v-shp">—</div></div></div>
+    </div>
+  </div>
+
+  <!-- 出勤状況 -->
+  <div class="sec">
+    <div class="att-panel">
+      <div class="att-panel-head">
+        <span>👥 本日の出勤状況</span>
+        <button class="edit-btn" onclick="openAttModal()" style="font-size:11px;padding:3px 12px;border-color:rgba(63,185,80,.4);color:var(--green)">🕐 出勤 / 退勤 打刻</button>
+      </div>
+      <div class="att-panel-body">
+        <div class="att-stamp-grid" id="att-inline-grid"></div>
+        <div class="att-stats">
+          <div><div class="slbl" style="font-size:10px;color:var(--text-muted);margin-bottom:4px">出勤中</div><div class="att-fig"><span class="att-big vg" id="v-pre">—</span><span class="att-unit">名</span></div></div>
+          <div class="att-div"></div>
+          <div><div class="slbl" style="font-size:10px;color:var(--text-muted);margin-bottom:4px">退勤済</div><div class="att-fig"><span class="att-big" style="color:var(--text-muted)" id="v-left">—</span><span class="att-unit">名</span></div></div>
+          <div class="att-div"></div>
+          <div><div class="slbl" style="font-size:10px;color:var(--text-muted);margin-bottom:4px">未出勤</div><div class="att-fig"><span class="att-big vr" id="v-abs">—</span><span class="att-unit">名</span></div></div>
+          <div class="att-div"></div>
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:130px;max-width:200px">
+            <div class="ptrack"><div class="pfill" id="pfill" style="width:0%"></div></div>
+            <span style="font-family:var(--font-display);font-size:13px;color:var(--green)" id="ppct">—%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 重要連絡 -->
+  <div class="sec">
+    <div class="sec-lbl">📌 本日の重要連絡</div>
+    <div class="ann-grid">
+      <div class="ann-card">
+        <div class="ann-head"><div class="ann-cat"><span style="color:var(--purple)">👑</span><span style="color:var(--text-secondary)">社長からの共有 / 重要連絡</span></div><span class="ann-new" id="ab-a" style="display:none">NEW</span></div>
+        <div class="ann-body" id="al-a"><div class="empty">投稿がありません</div></div>
+      </div>
+      <div class="ann-card">
+        <div class="ann-head"><div class="ann-cat"><span style="color:var(--red)">🚨</span><span style="color:var(--text-secondary)">緊急連絡 / 運用変更</span></div><span class="ann-new" id="ab-b" style="display:none">NEW</span></div>
+        <div class="ann-body" id="al-b"><div class="empty">投稿がありません</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- オペレーター実績 -->
+  <div class="sec" id="sec-op">
+    <div class="sec-lbl">📞 オペレーター別実績</div>
+    <div class="op-wrap">
+      <div class="op-hd"><div class="op-t">📊 本日の個人実績（出勤データ連動）</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)" id="op-upd">—</div></div>
+      <table class="opt"><thead><tr><th>#</th><th>オペレーター</th><th>出勤時刻</th><th>退勤時刻</th><th>勤務時間</th><th>ステータス</th></tr></thead>
+      <tbody id="op-tb"><tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">読み込み中...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="sec" id="sec-kpi">
+    <div class="sec-lbl">📊 KPIダッシュボード</div>
+    <div class="kpi-grid">
+      <div class="kcard ko"><div class="ktrend tup" id="kt1">—</div><div class="klbl">月間売上達成率</div><div class="kval vo" id="kv1">—<span style="font-size:16px">%</span></div><div class="ksub" id="ks1">—</div></div>
+      <div class="kcard kb"><div class="ktrend tup" id="kt2">—</div><div class="klbl">月間新規加盟店</div><div class="kval vb" id="kv2">—</div><div class="ksub" id="ks2">—</div></div>
+      <div class="kcard kt"><div class="ktrend tup" id="kt3">—</div><div class="klbl">顧客満足度 (CSAT)</div><div class="kval vt" id="kv3">—<span style="font-size:16px">%</span></div><div class="ksub" id="ks3">—</div></div>
+      <div class="kcard kp"><div class="ktrend tdn" id="kt4">—</div><div class="klbl">解約件数（月累計）</div><div class="kval vp" id="kv4">—</div><div class="ksub" id="ks4">—</div></div>
+    </div>
+  </div>
+
+  <!-- ステータス -->
+  <div class="sec">
+    <div class="sec-lbl">📋 対応状況サマリー</div>
+    <div class="stat-btns">
+      <div class="sbtn"><div class="sbtn-ic ic-r">🔴</div><div><div class="sbtn-lbl">未対応件数</div><div class="sbtn-cnt cr" id="v-pnd">—</div></div></div>
+      <div class="sbtn"><div class="sbtn-ic ic-y">🟡</div><div><div class="sbtn-lbl">保留案件</div><div class="sbtn-cnt cy" id="v-hld">—</div></div></div>
+      <div class="sbtn"><div class="sbtn-ic ic-g">🟢</div><div><div class="sbtn-lbl">完了件数</div><div class="sbtn-cnt cg" id="v-dn">—</div></div></div>
+    </div>
+  </div>
+
+  <!-- メニュー -->
+  <div class="sec">
+    <div class="sec-lbl">☰ メニュー一覧</div>
+    <div class="menu-g">
+      <a class="mbtn" href="#" onclick="om('ov-ann');return false"><span class="mi-ic">📌</span><span class="mi-lbl">重要連絡 投稿</span><span class="mi-sub">掲示・全体通知</span></a>
+      <a class="mbtn ao" href="#" onclick="openMetrics();return false"><span class="mi-ic">📊</span><span class="mi-lbl">業務数値 更新</span><span class="mi-sub">管理者専用</span></a>
+      <a class="mbtn" href="#" onclick="om('ov-claim');return false"><span class="mi-ic">🔥</span><span class="mi-lbl">クレーム共有</span><span class="mi-sub">対応履歴・登録</span></a>
+      <a class="mbtn" href="#" onclick="om('ov-inc');return false"><span class="mi-ic">⚠️</span><span class="mi-lbl">障害・不具合</span><span class="mi-sub">インシデント管理</span></a>
+      <a class="mbtn" href="#" onclick="openAttModal();return false"><span class="mi-ic">🕐</span><span class="mi-lbl">出勤・退勤 打刻</span><span class="mi-sub">本人確認あり</span></a>
+      <a class="mbtn" href="#" onclick="loadAll();toast('最新データを取得しました ✓');return false"><span class="mi-ic">🔄</span><span class="mi-lbl">データ更新</span><span class="mi-sub">Supabaseから再取得</span></a>
+    </div>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<div class="fbar">
+  <button class="fbtn fg2" onclick="openAttModal()">🕐 出勤 / 退勤</button>
+  <button class="fbtn fo" onclick="om('ov-claim')">🔥 クレーム登録</button>
+  <button class="fbtn fb" onclick="om('ov-ann')">📌 重要連絡</button>
+  <button class="fbtn ao" onclick="openMetrics()">📊 数値更新</button>
+  <button class="fbtn" onclick="om('ov-inc')">⚠️ 障害報告</button>
+  <button class="fbtn" onclick="loadAll();toast('更新しました ✓')">🔄 更新</button>
+</div>
+
+<script>
+// ===========================
+// UTILS
+// ===========================
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function toast(msg,type='ok'){
+  const c=document.getElementById('tc');const t=document.createElement('div');
+  t.className=`tst ${type}`;t.textContent=msg;c.appendChild(t);
+  setTimeout(()=>{t.style.animation='tOut .3s ease forwards';setTimeout(()=>t.remove(),300)},2800);
+}
+function tick(){const n=new Date(),p=x=>String(x).padStart(2,'0');document.getElementById('clock').textContent=`${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`}
+setInterval(tick,1000);tick();
+function nowTime(){const n=new Date();return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`}
+function todayStr(){const n=new Date();const d=['日','月','火','水','木','金','土'];return `${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日（${d[n.getDay()]}）`}
+function todayISO(){const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`}
+function shortDate(){const n=new Date();return `${n.getMonth()+1}/${n.getDate()}`}
+function calcDuration(inT,outT){
+  if(!inT||!outT)return null;
+  const[ih,im]=inT.substring(0,5).split(':').map(Number);
+  const[oh,om]=outT.substring(0,5).split(':').map(Number);
+  const mins=(oh*60+om)-(ih*60+im);
+  if(mins<=0)return null;
+  return `${Math.floor(mins/60)}h${String(mins%60).padStart(2,'0')}m`;
+}
+
+// ===========================
+// SYNC STATUS
+// ===========================
+function setSyncOk(){const b=document.getElementById('sync-badge');b.className='sync-badge sync-ok';b.textContent='⬤ Supabase接続中'}
+function setSyncErr(){const b=document.getElementById('sync-badge');b.className='sync-badge sync-err';b.textContent='⬤ 接続エラー'}
+
+// ===========================
+// ROLE
+// ===========================
+let role='president';
+function switchRole(r){
+  role=r;
+  const cfg={president:{lbl:'PRESIDENT',cls:'rp',av:'代'},admin:{lbl:'ADMIN',cls:'ra',av:'管'},staff:{lbl:'STAFF',cls:'rs',av:'田'}}[r];
+  document.getElementById('rbadge').textContent=cfg.lbl;document.getElementById('rbadge').className=`rbadge ${cfg.cls}`;document.getElementById('uav').textContent=cfg.av;
+  ['president','admin','staff'].forEach(x=>document.getElementById(`btn-${x}`).classList.toggle('active',x===r));
+  document.querySelectorAll('.ao').forEach(el=>el.style.display=r==='staff'?'none':'');
+  ['sec-kpi'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=r==='staff'?'none':''});
+}
+
+// ===========================
+// MODAL
+// ===========================
+function om(id){document.getElementById(id).classList.add('open')}
+function cm(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+let curTab='important';
+function swTab(btn){curTab=btn.dataset.tab;document.querySelectorAll('.mtab').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
+
+// ===========================
+// RENDER METRICS
+// ===========================
+function renderM(m){
+  if(!m)return;
+  document.getElementById('v-ib').textContent=m.inbound??'—';
+  document.getElementById('v-ob').textContent=m.outbound??'—';
+  document.getElementById('v-mr').textContent=m.mail_recv??'—';
+  document.getElementById('v-ms').textContent=m.mail_sent??'—';
+  document.getElementById('v-ls').textContent=m.ls_sent??'—';
+  document.getElementById('v-lr').textContent=m.ls_recv??'—';
+  document.getElementById('v-pay').textContent=m.payment??'—';
+  document.getElementById('v-con').textContent=m.connect_work??'—';
+  document.getElementById('v-shp').textContent=m.ship??'—';
+  document.getElementById('v-pnd').textContent=m.pending??'—';
+  document.getElementById('v-hld').textContent=m.hold??'—';
+  document.getElementById('v-dn').textContent=m.done??'—';
+}
+
+async function openMetrics(){
+  try{
+    const rows = await sb.from('daily_metrics').select('*',`metric_date=eq.${todayISO()}`);
+    const m = rows[0]||{};
+    ['ib','ob','mr','ms','ls','lr','pay','con','shp','pnd','hld','dn'].forEach((k,i)=>{
+      const fields=['inbound','outbound','mail_recv','mail_sent','ls_sent','ls_recv','payment','connect_work','ship','pending','hold','done'];
+      document.getElementById(`e-${k}`).value=m[fields[i]]||0;
+    });
+  }catch(e){console.error(e)}
+  om('ov-metrics');
+}
+
+async function updateMetrics(){
+  const data={
+    metric_date:todayISO(),
+    inbound:parseInt(document.getElementById('e-ib').value)||0,
+    outbound:parseInt(document.getElementById('e-ob').value)||0,
+    mail_recv:parseInt(document.getElementById('e-mr').value)||0,
+    mail_sent:parseInt(document.getElementById('e-ms').value)||0,
+    ls_sent:parseInt(document.getElementById('e-ls').value)||0,
+    ls_recv:parseInt(document.getElementById('e-lr').value)||0,
+    payment:parseInt(document.getElementById('e-pay').value)||0,
+    connect_work:parseInt(document.getElementById('e-con').value)||0,
+    ship:parseInt(document.getElementById('e-shp').value)||0,
+    pending:parseInt(document.getElementById('e-pnd').value)||0,
+    hold:parseInt(document.getElementById('e-hld').value)||0,
+    done:parseInt(document.getElementById('e-dn').value)||0,
+    updated_at:new Date().toISOString()
+  };
+  try{
+    await sb.from('daily_metrics').upsert(data,'on_conflict=metric_date');
+    cm('ov-metrics');renderM(data);toast('業務数値をSupabaseに保存しました ✓');setSyncOk();
+  }catch(e){toast('保存エラー: '+e.message,'er');setSyncErr()}
+}
+
+// ===========================
+// CLAIMS
+// ===========================
+async function loadClaims(){
+  const rows=await sb.from('claims').select('*',`claim_date=eq.${todayISO()}&order=created_at.desc`);
+  renderClaims(rows);return rows;
+}
+function renderClaims(claims){
+  const l=document.getElementById('cl-list');const badge=document.getElementById('cl-cnt');
+  if(!claims||!claims.length){l.innerHTML='<div class="empty">クレームはありません</div>';badge.textContent='0件';document.getElementById('emg-strip').style.display='none';return}
+  badge.textContent=`本日 ${claims.length}件`;
+  const tm={critical:{cls:'tcrit',lbl:'最重要'},mid:{cls:'tmid',lbl:'重要'},low:{cls:'tlow',lbl:'低'}};
+  l.innerHTML='';
+  claims.forEach(c=>{
+    const t=tm[c.level]||tm.mid;
+    const timeStr=c.claim_time?c.claim_time.substring(0,5):'';
+    l.innerHTML+=`<div class="ci">
+      <span class="ctag ${t.cls}">${t.lbl}</span>
+      <span>${esc(c.content)}</span>
+      <span class="cop">${esc(c.operator_name||'')}</span>
+      <span class="ctime">${timeStr}</span>
+      <button class="del-btn ao" onclick="delClaim('${c.id}')" title="削除">×</button>
+    </div>`;
+  });
+  const crit=claims.find(c=>c.level==='critical');
+  if(crit){document.getElementById('emg-strip').style.display='block';document.getElementById('emg-txt').textContent=crit.content;document.getElementById('emg-tm').textContent=crit.claim_time?crit.claim_time.substring(0,5):'';}
+  else{document.getElementById('emg-strip').style.display='none'}
+  if(role==='staff')document.querySelectorAll('.del-btn').forEach(b=>b.style.display='none');
+}
+async function submitClaim(){
+  const ct=document.getElementById('cl-ct').value.trim();
+  if(!ct){toast('内容を入力してください','er');return}
+  try{
+    await sb.from('claims').insert({level:document.getElementById('cl-lv').value,content:ct,operator_name:document.getElementById('cl-op').value.trim(),handler:document.getElementById('cl-hd').value.trim()});
+    cm('ov-claim');document.getElementById('cl-ct').value='';document.getElementById('cl-op').value='';document.getElementById('cl-hd').value='';
+    await loadClaims();toast('クレームを登録しました 🔥');setSyncOk();
+  }catch(e){toast('登録エラー: '+e.message,'er');setSyncErr()}
+}
+async function delClaim(id){
+  if(!confirm('削除しますか？'))return;
+  try{await sb.from('claims').delete(`id=eq.${id}`);await loadClaims();toast('削除しました');setSyncOk();}
+  catch(e){toast('削除エラー','er')}
+}
+
+// ===========================
+// ANNOUNCEMENTS
+// ===========================
+async function loadAnns(){
+  const rows=await sb.from('announcements').select('*',`post_date=eq.${todayISO()}&order=created_at.desc`);
+  renderAnns(rows);return rows;
+}
+function renderAnns(anns){
+  const gA=(anns||[]).filter(a=>a.category==='president'||a.category==='important');
+  const gB=(anns||[]).filter(a=>a.category==='emergency'||a.category==='ops');
+  const rg=(items,lid,bid)=>{
+    const l=document.getElementById(lid);const b=document.getElementById(bid);
+    if(!items.length){l.innerHTML='<div class="empty">投稿がありません</div>';b.style.display='none';return}
+    l.innerHTML='';b.style.display=items.some(a=>a.is_urgent)?'inline':'none';
+    items.forEach(a=>{
+      l.innerHTML+=`<div class="ann-item">
+        <div class="ann-txt">${a.is_urgent?'<span style="color:var(--red);margin-right:4px">【緊急】</span>':''}${esc(a.content)}</div>
+        <div class="ann-meta"><span class="ann-from">${esc(a.from_name||'')}</span><span class="ann-date">${a.post_time?a.post_time.substring(0,5):''}</span></div>
+        <button class="ann-del ao" onclick="delAnn('${a.id}')" title="削除">×</button>
+      </div>`;
+    });
+  };
+  rg(gA,'al-a','ab-a');rg(gB,'al-b','ab-b');
+  if(role==='staff')document.querySelectorAll('.ann-del').forEach(b=>b.style.display='none');
+}
+async function submitAnn(){
+  const ct=document.getElementById('an-ct').value.trim();
+  if(!ct){toast('内容を入力してください','er');return}
+  try{
+    await sb.from('announcements').insert({category:curTab,content:ct,from_name:document.getElementById('an-fr').value.trim()||'管理者',is_urgent:document.getElementById('an-ug').value==='1'});
+    cm('ov-ann');document.getElementById('an-ct').value='';document.getElementById('an-fr').value='';
+    await loadAnns();toast('連絡を投稿しました 📌');setSyncOk();
+  }catch(e){toast('投稿エラー: '+e.message,'er');setSyncErr()}
+}
+async function delAnn(id){
+  if(!confirm('削除しますか？'))return;
+  try{await sb.from('announcements').delete(`id=eq.${id}`);await loadAnns();toast('削除しました');setSyncOk();}
+  catch(e){toast('削除エラー','er')}
+}
+
+// ===========================
+// INCIDENTS
+// ===========================
+async function loadIncs(){
+  const rows=await sb.from('incidents').select('*','order=created_at.desc&limit=20');
+  renderIncs(rows);return rows;
+}
+function renderIncs(incs){
+  const l=document.getElementById('inc-l');const c=document.getElementById('inc-cnt');
+  if(!incs||!incs.length){l.innerHTML='<div class="empty">障害・不具合の報告はありません</div>';c.textContent='現在 0件';return}
+  const active=incs.filter(i=>i.status!=='解決済');c.textContent=`現在 ${active.length}件対応中`;
+  const sc={HIGH:'sh',MID:'sm',LOW:'sl'};l.innerHTML='';
+  incs.forEach(inc=>{
+    l.innerHTML+=`<div class="incr">
+      <span class="sev ${sc[inc.severity]||'sm'}">${esc(inc.severity)}</span>
+      <span style="color:var(--text-primary)">${esc(inc.content)}</span>
+      <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:10px">${esc(inc.occur_time||'')}</span>
+      <span class="sev ${sc[inc.severity]||'sm'}" style="font-size:10px">${esc(inc.status)}</span>
+      <button class="del-btn ao" onclick="delInc('${inc.id}')" title="削除">×</button>
+    </div>`;
+  });
+  if(role==='staff')document.querySelectorAll('.incr .del-btn').forEach(b=>b.style.display='none');
+}
+async function submitInc(){
+  const ct=document.getElementById('i-ct').value.trim();
+  if(!ct){toast('内容を入力してください','er');return}
+  try{
+    await sb.from('incidents').insert({severity:document.getElementById('i-sv').value,content:ct,occur_time:document.getElementById('i-tm').value.trim()||nowTime()+'〜',status:document.getElementById('i-st').value});
+    cm('ov-inc');document.getElementById('i-ct').value='';document.getElementById('i-tm').value='';
+    await loadIncs();toast('障害を報告しました ⚠️');setSyncOk();
+  }catch(e){toast('報告エラー: '+e.message,'er');setSyncErr()}
+}
+async function delInc(id){
+  if(!confirm('削除しますか？'))return;
+  try{await sb.from('incidents').delete(`id=eq.${id}`);await loadIncs();toast('削除しました');}
+  catch(e){toast('削除エラー','er')}
+}
+
+// ===========================
+// ATTENDANCE
+// ===========================
+const STAFF_LIST=[
+  {name:'田中 美咲',color:'#FF6B2B'},{name:'鈴木 健太',color:'#2F81F7'},{name:'佐藤 由紀',color:'#1ABC9C'},
+  {name:'山本 拓海',color:'#8B5CF6'},{name:'伊藤 奈々',color:'#D29922'},{name:'加藤 渉',color:'#3FB950'},
+  {name:'木村 理子',color:'#C44A18'},{name:'林 大輔',color:'#1A56B0'},{name:'中村 さくら',color:'#EC4899'},
+  {name:'小林 明',color:'#8B949E'},{name:'渡辺 翔',color:'#06B6D4'},{name:'松本 花',color:'#A78BFA'},
+];
+
+let attStep=1,selectedStaff=null,pinBuffer='';
+
+async function loadAttData(){
+  return await sb.from('attendance').select('*',`punch_date=eq.${todayISO()}`);
+}
+async function getPins(){
+  const rows=await sb.from('staff_pins').select('*','');
+  const map={};rows.forEach(r=>map[r.staff_name]=r.pin_code);return map;
+}
+
+function showStep(n){attStep=n;[1,2,3].forEach(i=>{const el=document.getElementById(`att-step${i}`);if(el)el.style.display=i===n?'':'none'})}
+function backToStep1(){selectedStaff=null;pinBuffer='';showStep(1);renderAttModal()}
+function closeAttModal(){backToStep1();cm('ov-att')}
+
+async function renderAttModal(){
+  const rows=await loadAttData();
+  const pins=await getPins();
+  const byName={};rows.forEach(r=>byName[r.staff_name]=r);
+  const grid=document.getElementById('att-staff-grid');
+  if(!grid)return;
+  grid.innerHTML='';
+  STAFF_LIST.forEach(s=>{
+    const d=byName[s.name]||{};
+    const isIn=d.punch_in&&!d.punch_out;
+    const isOut=d.punch_in&&d.punch_out;
+    let cls='staff-card'+(isIn?' punched-in':isOut?' punched-out':'');
+    if(selectedStaff===s.name)cls+=' selected';
+    const inStr=d.punch_in?d.punch_in.substring(0,5):'';
+    const outStr=d.punch_out?d.punch_out.substring(0,5):'';
+    const timeInfo=isIn?`<div class="sc-time" style="color:var(--green)">出勤 ${inStr}</div>`:isOut?`<div class="sc-time" style="color:var(--text-muted)">${inStr}→${outStr}</div>`:`<div class="sc-status">未打刻</div>`;
+    grid.innerHTML+=`<div class="${cls}" onclick="selectStaffForPunch('${esc(s.name)}')" style="border-top:2px solid ${s.color}">
+      ${isIn?'<div class="sc-badge"></div>':''}
+      <div class="sc-name">${esc(s.name)} ${pins[s.name]?'🔐':''}</div>${timeInfo}</div>`;
+  });
+  // Log
+  const log=document.getElementById('att-log-body');
+  const entries=rows.sort((a,b)=>(a.punch_in||'')>(b.punch_in||'')?1:-1);
+  if(!entries.length){log.innerHTML='<div class="empty" style="padding:10px">本日の打刻記録はありません</div>';}
+  else{
+    log.innerHTML='';
+    entries.forEach(d=>{
+      const inStr=d.punch_in?d.punch_in.substring(0,5):'—';
+      const outStr=d.punch_out?d.punch_out.substring(0,5):'—';
+      const dur=calcDuration(d.punch_in,d.punch_out);
+      const dotColor=d.punch_out?'var(--text-muted)':d.punch_in?'var(--green)':'var(--border)';
+      log.innerHTML+=`<div class="att-row"><span><span class="att-sdot" style="background:${dotColor}"></span>${esc(d.staff_name)}</span><span class="att-in-t">${inStr}</span><span class="att-out-t">${outStr}</span><span class="att-dur">${dur||'—'}</span></div>`;
+    });
+  }
+  renderPinMgmt(pins);
+  // CSV date defaults
+  const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const today=new Date();const fromEl=document.getElementById('csv-from');const toEl=document.getElementById('csv-to');
+  if(fromEl&&!fromEl.value){const f=new Date(today);f.setDate(1);fromEl.value=fmt(f)}
+  if(toEl&&!toEl.value)toEl.value=fmt(today);
+}
+
+function renderPinMgmt(pins){
+  const el=document.getElementById('pin-mgmt-list');if(!el)return;
+  el.innerHTML='';
+  STAFF_LIST.forEach(s=>{
+    const k=s.name.replace(/\s/g,'_');
+    el.innerHTML+=`<div class="pin-staff-row"><span>${esc(s.name)}</span><input class="pin-input" type="password" maxlength="4" placeholder="----" id="pin-inp-${k}" value="${pins[s.name]||''}" inputmode="numeric"><button class="pin-save-btn" onclick="savePin('${esc(s.name)}')">保存</button></div>`;
+  });
+}
+function toggleAdminBody(){
+  const body=document.getElementById('admin-att-body');
+  const btn=body.previousElementSibling.querySelector('.pin-save-btn');
+  const open=body.style.display==='none';body.style.display=open?'':'none';btn.textContent=open?'▲ 閉じる':'▼ 開く';
+}
+async function savePin(name){
+  const k=name.replace(/\s/g,'_');
+  const val=document.getElementById(`pin-inp-${k}`).value.trim();
+  if(val&&!/^\d{4}$/.test(val)){toast('PINは4桁の数字で入力してください','er');return}
+  try{
+    if(val){await sb.from('staff_pins').upsert({staff_name:name,pin_code:val},'on_conflict=staff_name');}
+    else{await sb.from('staff_pins').delete(`staff_name=eq.${encodeURIComponent(name)}`)}
+    toast(val?`${name} のPINを設定しました 🔐`:`${name} のPINを削除しました`);setSyncOk();
+    await renderAttModal();
+  }catch(e){toast('PIN保存エラー: '+e.message,'er');setSyncErr()}
+}
+
+async function selectStaffForPunch(name){
+  selectedStaff=name;
+  const pins=await getPins();
+  if(pins[name]){pinBuffer='';document.getElementById('pin-target-name').textContent=name;updatePinDisplay();document.getElementById('pin-err').textContent='';showStep(2);}
+  else{await goToStep3(name)}
+}
+async function goToStep3(name){
+  const rows=await loadAttData();
+  const d=rows.find(r=>r.staff_name===name)||{};
+  const isIn=d.punch_in&&!d.punch_out;const isOut=d.punch_in&&d.punch_out;
+  document.getElementById('punch-target-name').textContent=name;
+  let status='未打刻';
+  const inStr=d.punch_in?d.punch_in.substring(0,5):'';const outStr=d.punch_out?d.punch_out.substring(0,5):'';
+  if(isIn)status=`出勤中（${inStr}〜）`;else if(isOut)status=`退勤済（${inStr}→${outStr} / ${calcDuration(d.punch_in,d.punch_out)||''}）`;
+  document.getElementById('punch-current-status').textContent=status;showStep(3);
+}
+function updatePinDisplay(){
+  const err=document.getElementById('pin-err').textContent!=='';
+  for(let i=0;i<4;i++){const dot=document.getElementById(`pd${i}`);dot.className='pin-dot';if(err)dot.classList.add('error');else if(i<pinBuffer.length)dot.classList.add('filled')}
+}
+function pinKey(k){if(pinBuffer.length>=4)return;pinBuffer+=k;document.getElementById('pin-err').textContent='';updatePinDisplay();if(pinBuffer.length===4)setTimeout(pinEnter,150)}
+function pinDel(){pinBuffer=pinBuffer.slice(0,-1);document.getElementById('pin-err').textContent='';updatePinDisplay()}
+async function pinEnter(){
+  if(!pinBuffer.length)return;
+  const pins=await getPins();
+  if(pins[selectedStaff]===pinBuffer){await goToStep3(selectedStaff);}
+  else{document.getElementById('pin-err').textContent='PINが違います';updatePinDisplay();setTimeout(()=>{pinBuffer='';document.getElementById('pin-err').textContent='';updatePinDisplay()},900)}
+}
+
+async function punch(type){
+  if(!selectedStaff){toast('スタッフを選択してください','er');return}
+  const rows=await loadAttData();
+  const existing=rows.find(r=>r.staff_name===selectedStaff);
+  const now=nowTime();
+  try{
+    if(type==='in'){
+      if(existing&&existing.punch_in){toast(`${selectedStaff}はすでに出勤済みです`,'er');return}
+      await sb.from('attendance').insert({staff_name:selectedStaff,punch_date:todayISO(),punch_in:now});
+      toast(`✅ ${selectedStaff} 出勤打刻：${now}`);
+    }else{
+      if(!existing||!existing.punch_in){toast(`${selectedStaff}はまだ出勤打刻されていません`,'er');return}
+      if(existing.punch_out){toast(`${selectedStaff}はすでに退勤済みです`,'er');return}
+      await sb.from('attendance').update({punch_out:now},`id=eq.${existing.id}`);
+      const dur=calcDuration(existing.punch_in,now);
+      toast(`👋 ${selectedStaff} 退勤打刻：${now}（${dur||''}）`);
+    }
+    setSyncOk();backToStep1();await renderAttInline();
+  }catch(e){toast('打刻エラー: '+e.message,'er');setSyncErr()}
+}
+
+async function renderAttInline(){
+  const rows=await loadAttData();
+  const grid=document.getElementById('att-inline-grid');if(!grid)return;
+  const byName={};rows.forEach(r=>byName[r.staff_name]=r);
+  grid.innerHTML='';
+  let pre=0,left=0,abs=0;
+  STAFF_LIST.forEach(s=>{
+    const d=byName[s.name]||{};
+    const isIn=d.punch_in&&!d.punch_out;const isOut=d.punch_in&&d.punch_out;
+    if(isIn)pre++;else if(isOut)left++;else abs++;
+    const cls='stamp-card'+(isIn?' s-in':isOut?' s-out':'');
+    const inStr=d.punch_in?d.punch_in.substring(0,5):'';const outStr=d.punch_out?d.punch_out.substring(0,5):'';
+    const info=isIn?`出勤 ${inStr}`:isOut?`${inStr}→${outStr}`:'未打刻';
+    grid.innerHTML+=`<div class="${cls}" onclick="openAttModal()" title="${esc(s.name)}">${isIn?'<div class="stamp-dot"></div>':''}<div class="stamp-name">${esc(s.name)}</div><div class="stamp-info">${info}</div></div>`;
+  });
+  document.getElementById('v-pre').textContent=pre;document.getElementById('v-left').textContent=left;document.getElementById('v-abs').textContent=abs;
+  const total=STAFF_LIST.length;const pct=total>0?Math.round((pre+left)/total*100):0;
+  document.getElementById('pfill').style.width=pct+'%';document.getElementById('ppct').textContent=pct+'%';
+
+  // オペレーター実績テーブルも更新
+  const tb=document.getElementById('op-tb');tb.innerHTML='';
+  const sorted=rows.sort((a,b)=>(a.punch_in||'')>(b.punch_in||'')?1:-1);
+  if(!sorted.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">本日の出勤記録がありません</td></tr>';return}
+  const bm=['bgold','bsilv','bbrnz'];
+  sorted.forEach((r,i)=>{
+    const inStr=r.punch_in?r.punch_in.substring(0,5):'—';const outStr=r.punch_out?r.punch_out.substring(0,5):'—';
+    const dur=calcDuration(r.punch_in,r.punch_out)||'—';
+    const isIn=r.punch_in&&!r.punch_out;const isOut=r.punch_in&&r.punch_out;
+    const statusLabel=isOut?'退勤済':isIn?'出勤中':'—';
+    const statusColor=isOut?'var(--text-muted)':isIn?'var(--green)':'var(--border)';
+    const badge=i<3?`<span class="badge ${bm[i]}">${['GOLD','SILVER','BRONZE'][i]}</span>`:'';
+    const sc=STAFF_LIST.find(s=>s.name===r.staff_name);const color=sc?sc.color:'#8B949E';
+    tb.innerHTML+=`<tr>
+      <td><span style="font-family:var(--font-display);font-size:14px;color:${i===0?'var(--yellow)':'var(--text-muted)'}">${i+1}</span></td>
+      <td><div class="oname"><div class="oav" style="background:${color}">${r.staff_name.charAt(0)}</div>${esc(r.staff_name)}</div></td>
+      <td><span class="att-in-t">${inStr}</span></td>
+      <td><span class="att-out-t">${outStr}</span></td>
+      <td><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary)">${dur}</span></td>
+      <td><span style="font-size:10px;color:${statusColor}">${statusLabel}</span> ${badge}</td>
+    </tr>`;
+  });
+  document.getElementById('op-upd').textContent=`${shortDate()} Supabase同期`;
+}
+
+async function openAttModal(){
+  showStep(1);selectedStaff=null;pinBuffer='';
+  await renderAttModal();om('ov-att');
+  document.querySelectorAll('.ao').forEach(el=>el.style.display=role==='staff'?'none':'');
+}
+
+// CSV Export
+async function exportCSV(){
+  const fromVal=document.getElementById('csv-from').value;const toVal=document.getElementById('csv-to').value;
+  if(!fromVal||!toVal){toast('期間を指定してください','er');return}
+  try{
+    const rows=await sb.from('attendance').select('*',`punch_date=gte.${fromVal}&punch_date=lte.${toVal}&order=punch_date.asc,punch_in.asc`);
+    let csv='\uFEFF氏名,日付,出勤時刻,退勤時刻,勤務時間\r\n';
+    rows.forEach(r=>{
+      const inStr=r.punch_in?r.punch_in.substring(0,5):'';const outStr=r.punch_out?r.punch_out.substring(0,5):'';
+      const dur=calcDuration(r.punch_in,r.punch_out)||'';
+      csv+=`${r.staff_name},${r.punch_date},${inStr},${outStr},${dur}\r\n`;
+    });
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`勤怠_${fromVal}_${toVal}.csv`;a.click();URL.revokeObjectURL(url);
+    toast('CSVをダウンロードしました 📊');
+  }catch(e){toast('CSVエラー: '+e.message,'er')}
+}
+
+// KPI（静的 - 後でSupabase拡張可）
+function renderKPI(){
+  document.getElementById('kv1').innerHTML='73<span style="font-size:16px">%</span>';document.getElementById('ks1').textContent='目標：4,500万 / 達成：3,285万';document.getElementById('kt1').textContent='▲ 目標比';
+  document.getElementById('kv2').textContent='34';document.getElementById('ks2').textContent='目標50件に対して68%';document.getElementById('kt2').textContent='▲ 34件';
+  document.getElementById('kv3').innerHTML='91<span style="font-size:16px">%</span>';document.getElementById('ks3').textContent='今月 248件回答';document.getElementById('kt3').textContent='▲ 良好';
+  document.getElementById('kv4').textContent='7';document.getElementById('ks4').textContent='月累計';document.getElementById('kt4').textContent='▼ 注意';
+}
+
+// ===========================
+// LOAD ALL
+// ===========================
+async function loadAll(){
+  try{
+    document.getElementById('today').textContent=todayStr();
+    const [metrics,claims,anns,incs]=await Promise.all([
+      sb.from('daily_metrics').select('*',`metric_date=eq.${todayISO()}`),
+      sb.from('claims').select('*',`claim_date=eq.${todayISO()}&order=created_at.desc`),
+      sb.from('announcements').select('*',`post_date=eq.${todayISO()}&order=created_at.desc`),
+      sb.from('incidents').select('*','order=created_at.desc&limit=20'),
+    ]);
+    renderM(metrics[0]||null);renderClaims(claims);renderAnns(anns);renderIncs(incs);renderKPI();
+    await renderAttInline();
+    setSyncOk();
+    document.getElementById('loading-main').style.display='none';
+    document.getElementById('main').style.display='flex';
+    switchRole(role);
+  }catch(e){
+    console.error(e);setSyncErr();
+    document.getElementById('loading-main').style.display='none';
+    document.getElementById('main').style.display='flex';
+    toast('Supabase接続エラー: '+e.message,'er');
+  }
+}
+
+// 30秒ごとに自動更新
+setInterval(()=>{ loadAll(); }, 30000);
+
+loadAll();
+</script>
+</body>
+</html>
