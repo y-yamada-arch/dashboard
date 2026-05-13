@@ -618,9 +618,11 @@ const sb = {
   <div class="sec" id="sec-op">
     <div class="sec-lbl">📞 オペレーター別実績</div>
     <div class="op-wrap">
-      <div class="op-hd"><div class="op-t">📊 本日の個人実績（出勤データ連動）</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)" id="op-upd">—</div></div>
-      <table class="opt"><thead><tr><th>#</th><th>オペレーター</th><th>出勤時刻</th><th>退勤時刻</th><th>勤務時間</th><th>ステータス</th></tr></thead>
-      <tbody id="op-tb"><tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">読み込み中...</td></tr></tbody></table>
+      <div class="op-hd"><div class="op-t">📊 本日の個人実績（スプレッドシート自動連携）</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)" id="op-upd">—</div></div>
+      <table class="opt"><thead><tr>
+        <th>#</th><th>オペレーター</th><th>受電数</th><th>架電数</th><th>通話時間(受電)</th><th>AHT</th><th>生産性</th><th>長電話率</th><th>bell依存率</th><th>評価</th>
+      </tr></thead>
+      <tbody id="op-tb"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">読み込み中...</td></tr></tbody></table>
     </div>
   </div>
 
@@ -1059,29 +1061,39 @@ async function renderAttInline(){
   const total=STAFF_LIST.length;const pct=total>0?Math.round((pre+left)/total*100):0;
   document.getElementById('pfill').style.width=pct+'%';document.getElementById('ppct').textContent=pct+'%';
 
-  // オペレーター実績テーブルも更新
-  const tb=document.getElementById('op-tb');tb.innerHTML='';
-  const sorted=rows.sort((a,b)=>(a.punch_in||'')>(b.punch_in||'')?1:-1);
-  if(!sorted.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">本日の出勤記録がありません</td></tr>';return}
-  const bm=['bgold','bsilv','bbrnz'];
-  sorted.forEach((r,i)=>{
-    const inStr=r.punch_in?r.punch_in.substring(0,5):'—';const outStr=r.punch_out?r.punch_out.substring(0,5):'—';
-    const dur=calcDuration(r.punch_in,r.punch_out)||'—';
-    const isIn=r.punch_in&&!r.punch_out;const isOut=r.punch_in&&r.punch_out;
-    const statusLabel=isOut?'退勤済':isIn?'出勤中':'—';
-    const statusColor=isOut?'var(--text-muted)':isIn?'var(--green)':'var(--border)';
-    const badge=i<3?`<span class="badge ${bm[i]}">${['GOLD','SILVER','BRONZE'][i]}</span>`:'';
-    const sc=STAFF_LIST.find(s=>s.name===r.staff_name);const color=sc?sc.color:'#8B949E';
-    tb.innerHTML+=`<tr>
-      <td><span style="font-family:var(--font-display);font-size:14px;color:${i===0?'var(--yellow)':'var(--text-muted)'}">${i+1}</span></td>
-      <td><div class="oname"><div class="oav" style="background:${color}">${r.staff_name.charAt(0)}</div>${esc(r.staff_name)}</div></td>
-      <td><span class="att-in-t">${inStr}</span></td>
-      <td><span class="att-out-t">${outStr}</span></td>
-      <td><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary)">${dur}</span></td>
-      <td><span style="font-size:10px;color:${statusColor}">${statusLabel}</span> ${badge}</td>
-    </tr>`;
-  });
-  document.getElementById('op-upd').textContent=`${shortDate()} Supabase同期`;
+  // オペレーター実績テーブル（operator_statsから取得）
+  try{
+    const opRows = await sb.from('operator_stats').select('*',`stat_date=eq.${todayISO()}&order=inbound.desc`);
+    const tb=document.getElementById('op-tb');tb.innerHTML='';
+    if(!opRows||!opRows.length){
+      tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">本日のデータがありません（スプレッドシートから自動取得）</td></tr>';
+    } else {
+      const bm=['bgold','bsilv','bbrnz'];
+      opRows.forEach((r,i)=>{
+        const sc=STAFF_LIST.find(s=>s.name===r.staff_name);const color=sc?sc.color:'#8B949E';
+        const badge=i<3?`<span class="badge ${bm[i]}">${['GOLD','SILVER','BRONZE'][i]}</span>`:
+                    r.productivity>=18?`<span class="badge bnew">優秀</span>`:
+                    r.productivity>=12?`<span class="badge" style="background:rgba(47,129,247,.12);color:var(--blue);border:1px solid var(--blue-dim)">良い</span>`:
+                    `<span class="badge bwarn">要改善</span>`;
+        const prodColor=r.productivity>=18?'var(--green)':r.productivity>=12?'var(--blue)':r.productivity>=8?'var(--yellow)':'var(--red)';
+        tb.innerHTML+=`<tr>
+          <td><span style="font-family:var(--font-display);font-size:14px;color:${i===0?'var(--yellow)':i===1?'var(--text-secondary)':'var(--text-muted)'}">${i+1}</span></td>
+          <td><div class="oname"><div class="oav" style="background:${color}">${r.staff_name.charAt(0)}</div>${esc(r.staff_name)}</div></td>
+          <td><span class="onum" style="color:${color}">${r.inbound??'—'}</span></td>
+          <td><span class="onum" style="color:${color}">${r.outbound??'—'}</span></td>
+          <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary)">${r.talk_time_recv??'—'}</td>
+          <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary)">${r.aht??'—'}</td>
+          <td><span style="font-family:var(--font-display);font-size:13px;font-weight:700;color:${prodColor}">${r.productivity??'—'}</span></td>
+          <td style="font-size:11px;color:var(--text-secondary)">${r.long_call??'—'}</td>
+          <td style="font-size:11px;color:var(--text-secondary)">${r.bell_rate??'—'}</td>
+          <td>${badge}</td>
+        </tr>`;
+      });
+    }
+    document.getElementById('op-upd').textContent=`${shortDate()} スプレッドシート連携`;
+  }catch(e){
+    console.error('operator_stats error:', e);
+  }
 }
 
 async function openAttModal(){
