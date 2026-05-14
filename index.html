@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>社内掲示板 ダッシュボード</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=DM+Mono:wght@400;500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg-base:#F0F4F8;--bg-surface:#FFFFFF;--bg-elevated:#F8FAFC;--bg-card:#EEF2F7;
@@ -13,7 +13,7 @@
   --blue:#0EA5E9;--blue-dim:#0284C7;--blue-glow:rgba(14,165,233,0.1);
   --teal:#0D9488;--purple:#7C3AED;--red:#EF4444;--yellow:#F59E0B;--green:#22C55E;
   --text-primary:#1E293B;--text-secondary:#475569;--text-muted:#94A3B8;
-  --font-display:'Orbitron',monospace;--font-body:'Noto Sans JP',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --font-display:'DM Mono',monospace;--font-body:'Noto Sans JP',sans-serif;--font-mono:'JetBrains Mono',monospace;
   --shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
   --shadow-md:0 4px 6px rgba(0,0,0,0.07),0 2px 4px rgba(0,0,0,0.05);
 }
@@ -586,8 +586,8 @@ const sb = {
     </div>
   </div>
 
-  <!-- 出勤状況 -->
-  <div class="sec">
+  <!-- 出勤状況（非表示）-->
+  <div class="sec" style="display:none">
     <div class="att-panel">
       <div class="att-panel-head">
         <span>👥 本日の出勤状況</span>
@@ -667,7 +667,6 @@ const sb = {
       <a class="mbtn ao" href="#" onclick="openMetrics();return false"><span class="mi-ic">📊</span><span class="mi-lbl">業務数値 更新</span><span class="mi-sub">管理者専用</span></a>
       <a class="mbtn" href="#" onclick="om('ov-claim');return false"><span class="mi-ic">🔥</span><span class="mi-lbl">クレーム共有</span><span class="mi-sub">対応履歴・登録</span></a>
       <a class="mbtn" href="#" onclick="om('ov-inc');return false"><span class="mi-ic">⚠️</span><span class="mi-lbl">障害・不具合</span><span class="mi-sub">インシデント管理</span></a>
-      <a class="mbtn" href="#" onclick="openAttModal();return false"><span class="mi-ic">🕐</span><span class="mi-lbl">出勤・退勤 打刻</span><span class="mi-sub">本人確認あり</span></a>
       <a class="mbtn" href="#" onclick="loadAll();toast('最新データを取得しました ✓');return false"><span class="mi-ic">🔄</span><span class="mi-lbl">データ更新</span><span class="mi-sub">Supabaseから再取得</span></a>
     </div>
   </div>
@@ -676,7 +675,6 @@ const sb = {
 
 <!-- FOOTER -->
 <div class="fbar">
-  <button class="fbtn fg2" onclick="openAttModal()">🕐 出勤 / 退勤</button>
   <button class="fbtn fo" onclick="om('ov-claim')">🔥 クレーム登録</button>
   <button class="fbtn fb" onclick="om('ov-ann')">📌 重要連絡</button>
   <button class="fbtn ao" onclick="openMetrics()">📊 数値更新</button>
@@ -883,7 +881,9 @@ async function loadIncs(){
   renderIncs(rows);return rows;
 }
 function renderIncs(incs){
-  const l=document.getElementById('inc-l');const c=document.getElementById('inc-cnt');
+  const l=document.getElementById('inc-l');
+  const c=document.getElementById('inc-cnt');
+  if(!l||!c) return; // 要素がない場合は何もしない
   if(!incs||!incs.length){l.innerHTML='<div class="empty">障害・不具合の報告はありません</div>';c.textContent='現在 0件';return}
   const active=incs.filter(i=>i.status!=='解決済');c.textContent=`現在 ${active.length}件対応中`;
   const sc={HIGH:'sh',MID:'sm',LOW:'sl'};l.innerHTML='';
